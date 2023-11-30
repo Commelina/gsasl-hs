@@ -1,38 +1,67 @@
-cabal-version:      3.4
-name:               gsasl-hs
-version:            0.1.0.0
+cabal-version:   3.4
+name:            gsasl-hs
+version:         0.1.0.0
+
 -- synopsis:
 -- description:
-license:            BSD-3-Clause
-license-file:       LICENSE
-author:             Commelina
-maintainer:         maosics@gmail.com
+license:         BSD-3-Clause
+license-file:    LICENSE
+author:          Commelina
+maintainer:      maosics@gmail.com
+
 -- copyright:
-category:           Network
-build-type:         Simple
-extra-doc-files:    CHANGELOG.md
+category:        Network
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
 -- extra-source-files:
 
 common warnings
-    ghc-options: -Wall
+  ghc-options: -Wall
 
 library
-    import:           warnings
-    exposed-modules:  MyLib
-    -- other-modules:
-    -- other-extensions:
-    build-depends:    base ^>=4.16.4.0
-    hs-source-dirs:   src
-    default-language: GHC2021
+  import:             warnings
+  exposed-modules:
+    Exception
+    FFI
+    Types
+
+  -- other-modules:
+  -- other-extensions:
+  build-depends:
+    , base        >=4.16 && <5
+    , bytestring
+
+  hs-source-dirs:     src
+  build-tool-depends: hsc2hs:hsc2hs
+  extra-libraries:    gsasl
+  default-language:   GHC2021
+
+executable example
+  import:           warnings
+  default-language: GHC2021
+
+  -- other-modules:
+  -- other-extensions:
+  hs-source-dirs:   example
+  main-is:          Main.hs
+  build-depends:
+    , base      >=4.16 && <5
+    , gsasl-hs
 
 test-suite gsasl-hs-test
-    import:           warnings
-    default-language: GHC2021
-    -- other-modules:
-    -- other-extensions:
-    type:             exitcode-stdio-1.0
-    hs-source-dirs:   test
-    main-is:          Main.hs
-    build-depends:
-        base ^>=4.16.4.0,
-        gsasl-hs
+  import:           warnings
+  default-language: GHC2021
+
+  -- other-modules:
+  -- other-extensions:
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Main.hs
+  build-depends:
+    , base              >=4.16 && <5
+    , gsasl-hs
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , tasty-smallcheck
