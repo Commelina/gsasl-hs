@@ -1,58 +1,52 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+import qualified Data.ByteString       as B
+import qualified Data.ByteString.Char8 as BSC
+import           Data.Functor
+import           Data.List
+import           Data.Maybe
+import           Data.Ord
+import           Data.Word
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Test.Tasty.QuickCheck as QC
-import           Test.Tasty.SmallCheck as SC
 
-import           Data.List
-import           Data.Ord
-
-import           Exception
-import           FFI
-import           Types
+import           Network.SASL.SASL
 
 main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [ properties
-                          -- , unitTests
+                          , unitTest1
                           ]
-
 properties :: TestTree
-properties = testGroup "Properties" [scProps, qcProps]
-
-scProps = testGroup "(checked by SmallCheck)"
-  [ SC.testProperty "from . to == id" $
-      \str -> fromBase64 (toBase64 (str :: String)) == str
-  , SC.testProperty "..." $
-      \c n -> (n :: Int) <= 10 SC.==>
-        let str = replicate n (c :: Char)
-         in fromBase64 (toBase64 str) == str
-  -- the following property does not hold
-{-
-  , SC.testProperty "Fermat's last theorem" $
-      \x y z n ->
-        (n :: Integer) >= 3 SC.==> x^n + y^n /= (z^n :: Integer)
--}
-  ]
+properties = testGroup "Properties" [qcProps]
 
 qcProps = testGroup "(checked by QuickCheck)"
-  [ QC.testProperty "from . to == id" $
-      \str -> fromBase64 (toBase64 (str :: String)) == str
-  -- the following property does not hold
-{-
-  , QC.testProperty "Fermat's last theorem" $
-      \x y z n ->
-        (n :: Integer) >= 3 QC.==> x^n + y^n /= (z^n :: Integer)
--}
+  [ QC.testProperty "..." $
+      \c n -> (n :: Int) <= 50 QC.==>
+        let str = B.replicate n (c :: Word8)
+         in fromBase64 (toBase64 str) == str
   ]
 
-{-
-unitTests = testGroup "Unit tests"
-  [ testCase "List comparison (different length)" $
-      [1, 2, 3] `compare` [1,2] @?= GT
-
-  -- the following test does not hold
-  , testCase "List comparison (same length)" $
-      [1, 2, 3] `compare` [1,2,2] @?= LT
+unitTest1 = testGroup "Version Check"
+  [ testCase "check version with NULL" $
+      (gsaslCheckVersion Nothing <&> isValidVersion) @? "Invalid libgsasl version"
+  , testCase "check version with a small version" $
+      (gsaslCheckVersion (Just "0.2.0") <&> isValidVersion) @? "Invalid libgsasl version"
+  , testCase "check version with a large version" $
+      (gsaslCheckVersion (Just "9.9.9") <&> isNothing) @? "Invalid libgsasl version"
   ]
--}
+  where isValidVersion :: Maybe B.ByteString -> Bool
+        isValidVersion Nothing = False
+        isValidVersion (Just s) =
+          let vs = B.split (fromIntegral $ fromEnum '.') s
+           in length vs == 3 &&
+              cmp (read $ BSC.unpack $ vs !! 0)
+                  (read $ BSC.unpack $ vs !! 1)
+                  (read $ BSC.unpack $ vs !! 2)
+          where cmp a b c
+                    | a > 1     = True
+                    | b > 10    = True
+                    | c >= 0    = True
+                    | otherwise = False

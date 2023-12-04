@@ -1,9 +1,8 @@
 cabal-version:   3.4
 name:            gsasl-hs
 version:         0.1.0.0
-
--- synopsis:
--- description:
+synopsis:        High performance bindings for GNU SASL library.
+description:     High performance bindings for GNU SASL library.
 license:         BSD-3-Clause
 license-file:    LICENSE
 author:          Commelina
@@ -21,12 +20,12 @@ common warnings
 
 library
   import:             warnings
-  exposed-modules:
-    Exception
-    FFI
-    Types
+  exposed-modules:    Network.SASL.SASL
+  other-modules:
+    Network.SASL.Internal.Exception
+    Network.SASL.Internal.FFI
+    Network.SASL.Internal.Types
 
-  -- other-modules:
   -- other-extensions:
   build-depends:
     , base        >=4.16 && <5
@@ -46,7 +45,8 @@ executable example
   hs-source-dirs:   example
   main-is:          Main.hs
   build-depends:
-    , base      >=4.16 && <5
+    , base        >=4.16 && <5
+    , bytestring
     , gsasl-hs
 
 test-suite gsasl-hs-test
@@ -60,8 +60,8 @@ test-suite gsasl-hs-test
   main-is:          Main.hs
   build-depends:
     , base              >=4.16 && <5
+    , bytestring
     , gsasl-hs
     , tasty
     , tasty-hunit
     , tasty-quickcheck
-    , tasty-smallcheck

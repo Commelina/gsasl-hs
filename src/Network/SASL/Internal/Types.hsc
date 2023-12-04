@@ -1,24 +1,64 @@
-{-# LANGUAGE CApiFFI          #-}
-{-# LANGUAGE CPP              #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE CPP             #-}
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE PatternSynonyms #-}
 
-module Types where
+module Network.SASL.Internal.Types
+  ( GSaslContext (..)
+  , GSaslSession (..)
+  , Property (..)
+  , CallbackFn
+  , Progress (..)
+
+  , pattern PropertyAuthid
+  , pattern PropertyAuthzid
+  , pattern PropertyPassword
+  , pattern PropertyAnonymousToken
+  , pattern PropertyService
+  , pattern PropertyHostname
+  , pattern PropertyGssapiDisplayName
+  , pattern PropertyPasscode
+  , pattern PropertySuggestedPin
+  , pattern PropertyPin
+  , pattern PropertyRealm
+  , pattern PropertyDigestMd5HashedPassword
+  , pattern PropertyQops
+  , pattern PropertyQop
+  , pattern PropertyScramIter
+  , pattern PropertyScramSalt
+  , pattern PropertyScramSaltedPassword
+  , pattern PropertyScramServerkey
+  , pattern PropertyScramStoredkey
+  , pattern PropertyCBTlsUnique
+  , pattern PropertySaml20IdpIdentifier
+  , pattern PropertySaml20RedirectUrl
+  , pattern PropertyOpenid20RedirectUrl
+  , pattern PropertyOpenid20OutcomeData
+  , pattern PropertySaml20AuthenticateINBrowser
+  , pattern PropertyOpenid20AuthenticateINBrowser
+  , pattern PropertyValidateSimple
+  , pattern PropertyValidateExternal
+  , pattern PropertyValidateAnonymous
+  , pattern PropertyValidateGssapi
+  , pattern PropertyValidateSecurid
+  , pattern PropertyValidateSaml20
+  , pattern PropertyValidateOpenid20
+  ) where
 
 #include <gsasl.h>
 
+import           Data.Void (Void)
 import           Foreign
 import           Foreign.C
 
--- Context
-data TGSaslContext
-newtype GSaslContext = GSaslContext { unGSaslContext :: Ptr TGSaslContext } deriving (Storable)
+-- libgsasl Context. Actually a pointer
+newtype GSaslContext =
+  GSaslContext { unGSaslContext :: Ptr Void } deriving (Storable)
 
--- Session
-data TGSaslSession
-newtype GSaslSession = GSaslSession { unGSaslSession :: Ptr TGSaslSession } deriving (Storable)
+-- libgsasl Session. Actually a pointer
+newtype GSaslSession =
+  GSaslSession { unGSaslSession :: Ptr Void } deriving (Storable)
 
--- Property
+-- libgsasl Properties
 newtype Property = Property CInt deriving (Eq, Num)
 pattern
     PropertyAuthid
@@ -90,6 +130,9 @@ pattern PropertyValidateSecurid               = Property (#const GSASL_VALIDATE_
 pattern PropertyValidateSaml20                = Property (#const GSASL_VALIDATE_SAML20)
 pattern PropertyValidateOpenid20              = Property (#const GSASL_VALIDATE_OPENID20)
 
--- Callback
+-- libgsasl Callback function, in C style
 type CallbackFn =
   GSaslContext -> GSaslSession -> Property -> IO CInt
+
+-- Indicates if the current authentication is done or not
+data Progress = GSaslDone | GSaslMore deriving (Eq, Show)

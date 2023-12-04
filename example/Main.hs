@@ -1,20 +1,20 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main (main) where
 
-import           Types
-import           Exception
-import           FFI
+import           Network.SASL.SASL
 
-import           Foreign
-import           Foreign.C
-
-import Data.Char
+import qualified Data.ByteString as B
 
 main :: IO ()
 main = do
-  v <- gsasl_check_version nullPtr >>= peekCString
-  print v
+  gsaslCheckVersion Nothing        >>= print
+  gsaslCheckVersion (Just "1.0.0") >>= print
+  gsaslCheckVersion (Just "9.9.9") >>= print
 
   withGSaslContext $ \ctx -> do
+    getServerMechlist ctx >>= print
+    getServerMechlist ctx >>= print
     getServerMechlist ctx >>= print
     isServerSupported ctx "PLAIN" >>= print
     isServerSupported ctx "SCRAM-SHA-256" >>= print
@@ -23,18 +23,18 @@ main = do
     setCallback ctx (\p s -> case p of
       PropertyHostname -> do
         setProperty s PropertyHostname "localhost"
-        print $ "set hostname to localhost"
+        putStrLn $ "set hostname to localhost"
       PropertyValidateSimple -> do
         u <- getProperty s PropertyAuthid
-        p <- getProperty s PropertyPassword
-        print $ ">>> u=" <> u <> ", p=" <> p
+        p_ <- getProperty s PropertyPassword
+        putStrLn $ ">>> u=" <> show u <> ", p=" <> show p_
         error "xxx"
       _ -> return ()
                     )
 
     withServerSession ctx "PLAIN" $ \session -> do
       mechName <- serverSessionMechanism session
-      print $ "I am using mech: " <> mechName
+      print $ "I am using mech: " <> show mechName
 
       getProperty session PropertyHostname >>= print
       getPropertyFast session PropertyHostname >>= print
@@ -50,4 +50,4 @@ main = do
       print $ "toBase64 [the quick brown fox jumps over the lazy dog]: " <>
               toBase64 "the quick brown fox jumps over the lazy dog"
 
-      serverStep session ("aa" <> [chr 0] <> "bb" <> [chr 0] <> "cc") >>= print
+      serverStep session ("aa" <> B.singleton 0 <> "bb" <> B.singleton 0 <> "cc") >>= print
