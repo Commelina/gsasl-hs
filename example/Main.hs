@@ -4,7 +4,7 @@ module Main (main) where
 
 import           Network.SASL.SASL
 
-import qualified Data.ByteString as B
+import qualified Data.ByteString   as B
 
 main :: IO ()
 main = do
@@ -24,12 +24,13 @@ main = do
       PropertyHostname -> do
         setProperty s PropertyHostname "localhost"
         putStrLn $ "set hostname to localhost"
+        return GSASL_OK
       PropertyValidateSimple -> do
         u <- getProperty s PropertyAuthid
         p_ <- getProperty s PropertyPassword
         putStrLn $ ">>> u=" <> show u <> ", p=" <> show p_
         error "xxx"
-      _ -> return ()
+      _ -> return AUTHENTICATION_ERROR
                     )
 
     withServerSession ctx "PLAIN" $ \session -> do

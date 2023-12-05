@@ -121,7 +121,7 @@ foreign import ccall unsafe "gsasl.h gsasl_finish"
 
 -- | Initialize a server session with the given mechanism, do an action with
 --   the session and free the session after finishing it or if an exception
---   is thrown.
+--   is thrown. This function may throw 'GSaslException'.
 --   [WARNING]: NEVER return the memory related to the session because it will
 --              be freed after the action.
 withServerSession :: GSaslContext -> B.ByteString -> (GSaslSession -> IO a) -> IO a
@@ -194,9 +194,15 @@ foreign import ccall safe "gsasl.h gsasl_callback"
 -- | Set the callback function of the current context.
 -- [WARNING]: the context only keeps the pointer of the callback function, so
 --            the it should be valid during the whole lifetime of the context.
-setCallback :: GSaslContext -> (Property -> GSaslSession -> IO ()) -> IO ()
+setCallback :: GSaslContext -> (Property -> GSaslSession -> IO GSaslErrCode) -> IO ()
 setCallback ctx cb = do
-  cbPtr <- mkCallbackFnPtr (\_ session prop -> cb prop session >> return 0)
+  -- FIXME: Here we catched all Haskell exceptions and return 'GSASL_AUTHENTICATION_ERROR'.
+  --        However, this should be performed in the callback function.
+  cbPtr <- mkCallbackFnPtr (\_ session prop -> E.handle (\(_ :: E.SomeException) ->
+                                                            return (#const GSASL_AUTHENTICATION_ERROR)) $ do
+                                 (GSaslErrCode n) <- cb prop session
+                                 return n
+                           )
   gsasl_callback_set ctx cbPtr
 
 -- | Invoke the callback function with certain property. It throws 'GSASL_NO_CALLBACK'
