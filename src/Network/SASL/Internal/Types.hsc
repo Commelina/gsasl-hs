@@ -26,8 +26,8 @@ module Network.SASL.Internal.Types
   , pattern PropertyScramIter
   , pattern PropertyScramSalt
   , pattern PropertyScramSaltedPassword
-  , pattern PropertyScramServerkey
-  , pattern PropertyScramStoredkey
+  , pattern PropertyScramServerKey
+  , pattern PropertyScramStoredKey
   , pattern PropertyCBTlsUnique
   , pattern PropertySaml20IdpIdentifier
   , pattern PropertySaml20RedirectUrl
@@ -59,7 +59,7 @@ newtype GSaslSession =
   GSaslSession { unGSaslSession :: Ptr Void } deriving (Storable)
 
 -- libgsasl Properties
-newtype Property = Property CInt deriving (Eq, Num)
+newtype Property = Property CInt deriving (Show, Eq, Num)
 pattern
     PropertyAuthid
   , PropertyAuthzid
@@ -78,8 +78,8 @@ pattern
   , PropertyScramIter
   , PropertyScramSalt
   , PropertyScramSaltedPassword
-  , PropertyScramServerkey
-  , PropertyScramStoredkey
+  , PropertyScramServerKey
+  , PropertyScramStoredKey
   , PropertyCBTlsUnique
   , PropertySaml20IdpIdentifier
   , PropertySaml20RedirectUrl
@@ -113,8 +113,8 @@ pattern PropertyQop                           = Property (#const GSASL_QOP)
 pattern PropertyScramIter                     = Property (#const GSASL_SCRAM_ITER)
 pattern PropertyScramSalt                     = Property (#const GSASL_SCRAM_SALT)
 pattern PropertyScramSaltedPassword           = Property (#const GSASL_SCRAM_SALTED_PASSWORD)
-pattern PropertyScramServerkey                = Property (#const GSASL_SCRAM_SERVERKEY)
-pattern PropertyScramStoredkey                = Property (#const GSASL_SCRAM_STOREDKEY)
+pattern PropertyScramServerKey                = Property (#const GSASL_SCRAM_SERVERKEY)
+pattern PropertyScramStoredKey                = Property (#const GSASL_SCRAM_STOREDKEY)
 pattern PropertyCBTlsUnique                   = Property (#const GSASL_CB_TLS_UNIQUE)
 pattern PropertySaml20IdpIdentifier           = Property (#const GSASL_SAML20_IDP_IDENTIFIER)
 pattern PropertySaml20RedirectUrl             = Property (#const GSASL_SAML20_REDIRECT_URL)
