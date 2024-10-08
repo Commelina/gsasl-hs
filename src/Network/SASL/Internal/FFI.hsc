@@ -29,6 +29,7 @@ module Network.SASL.Internal.FFI
   , toBase64
   , fromBase64
   , scramSecretsFromPasswordSha256
+  , scramSecretsFromSaltedPasswordSha256
   ) where
 
 #include <gsasl.h>
@@ -339,3 +340,25 @@ scramSecretsFromPasswordSha256 pw iter salt = unsafePerformIO $
       storedKey      <- B.packCStringLen (storedKeyBuf     , 32)
       return (saltedPassword, clientKey, serverKey, storedKey)
                                                                      )
+
+foreign import ccall "gsasl.h gsasl_scram_secrets_from_salted_password"
+  gsasl_scram_secrets_from_salted_password :: CUInt -> CString -> CString -> CString -> CString -> IO CInt
+
+scramSecretsFromSaltedPasswordSha256 :: B.ByteString -- saltedPassword
+                                     -> ( B.ByteString -- clientKey
+                                        , B.ByteString -- serverKey
+                                        , B.ByteString -- storedKey
+                                        )
+scramSecretsFromSaltedPasswordSha256 saltedPassword = unsafePerformIO $
+  B.unsafeUseAsCString saltedPassword $ \pSpw ->
+  allocaBytes 32 $ \clientKeyBuf ->
+  allocaBytes 32 $ \serverKeyBuf ->
+  allocaBytes 32 $ \storedKeyBuf -> do
+    -- FIXME: use enum 'GSASL_HASH_SHA256' instead of literal '3'
+    gsasl_scram_secrets_from_salted_password 3 pSpw clientKeyBuf serverKeyBuf storedKeyBuf
+      >>= gsaslThen (do
+        clientKey <- B.packCStringLen (clientKeyBuf, 32)
+        serverKey <- B.packCStringLen (serverKeyBuf, 32)
+        storedKey <- B.packCStringLen (storedKeyBuf, 32)
+        return (clientKey, serverKey, storedKey)
+                    )
