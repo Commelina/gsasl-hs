@@ -69,7 +69,7 @@ type Version = B.ByteString
 gsaslCheckVersion :: Maybe Version -> IO (Maybe Version)
 gsaslCheckVersion req_ver_m = do
   let req_ver = fromMaybe "" req_ver_m
-  B.unsafeUseAsCString req_ver $ \cstr -> do
+  B.useAsCString req_ver $ \cstr -> do
     res <- gsasl_check_version cstr
     if res == nullPtr then
        pure Nothing else
@@ -106,7 +106,7 @@ foreign import ccall unsafe "gsasl.h gsasl_server_support_p"
 
 -- | Decide whether the server supports the given mechanism.
 isServerSupported :: GSaslContext -> B.ByteString -> IO Bool
-isServerSupported ctx mech = B.unsafeUseAsCString mech $ \cstr -> do
+isServerSupported ctx mech = B.useAsCString mech $ \cstr -> do
   gsasl_server_support_p ctx cstr >>= \case
     1 -> return True
     _ -> return False
@@ -127,7 +127,7 @@ foreign import ccall unsafe "gsasl.h gsasl_finish"
 --              be freed after the action.
 withServerSession :: GSaslContext -> B.ByteString -> (GSaslSession -> IO a) -> IO a
 withServerSession ctx mech action = E.bracket initCtx freeCtx action
-  where initCtx = B.unsafeUseAsCString mech $ \cstr -> do
+  where initCtx = B.useAsCString mech $ \cstr -> do
                     alloca $ \(p :: Ptr GSaslSession) ->
                       gsasl_server_start ctx cstr p >>= gsaslThen (peek p)
         freeCtx = gsasl_finish
@@ -142,7 +142,7 @@ serverSessionMechanism :: GSaslSession -> IO (Maybe B.ByteString)
 serverSessionMechanism session = do
   gsasl_mechanism_name session >>= \case
     cstr | cstr == nullPtr -> return Nothing
-         | otherwise       -> Just <$> B.unsafePackCString cstr
+         | otherwise       -> Just <$> B.packCString cstr
 
 -------------------------------------------------------------------------------
 -- libgsasl Property
@@ -157,7 +157,7 @@ getProperty :: GSaslSession -> Property -> IO (Maybe B.ByteString)
 getProperty session prop = do
   gsasl_property_get session prop >>= \case
     cstr | cstr == nullPtr -> return Nothing
-         | otherwise       -> Just <$> B.unsafePackCString cstr
+         | otherwise       -> Just <$> B.packCString cstr
 
 foreign import ccall unsafe "gsasl.h gsasl_property_fast"
   gsasl_property_fast :: GSaslSession -> Property -> IO CString
@@ -169,15 +169,19 @@ getPropertyFast :: GSaslSession -> Property -> IO (Maybe B.ByteString)
 getPropertyFast session prop = do
   gsasl_property_fast session prop >>= \case
     cstr | cstr == nullPtr -> return Nothing
-         | otherwise       -> Just <$> B.unsafePackCString cstr
+         | otherwise       -> Just <$> B.packCString cstr
 
 foreign import ccall unsafe "gsasl.h gsasl_property_set"
   gsasl_property_set :: GSaslSession -> Property -> CString -> IO ()
 
+foreign import ccall unsafe "gsasl.h gsasl_property_set_raw"
+  gsasl_property_set_raw :: GSaslSession -> Property -> CString -> CSize -> IO ()
+
 -- | Set the property value of the current session.
 -- [WARNING]: the value passed to the FFI call is [COPIED] by the libgsasl.
 setProperty :: GSaslSession -> Property -> B.ByteString -> IO ()
-setProperty session prop val = B.unsafeUseAsCString val (gsasl_property_set session prop)
+setProperty session prop val = B.unsafeUseAsCStringLen val $ \(cstr,len) ->
+  gsasl_property_set_raw session prop cstr (fromIntegral len)
 
 -------------------------------------------------------------------------------
 -- libgsasl Callback
@@ -232,16 +236,14 @@ serverStep session input =
 -- | Perform one step of SASL authentication. The input and output are both
 --   encoded in base64. It returns either 'GSaslDone' or 'GSaslMore' indicating
 --   the progress with the output, or throws an exception.
---   [WARNING]: Like 'serverStep', the function uses 'unsafeUseAsCString' so the
---              input bytestring should not be freed or modified during the
---              function call. And the output is allocated by the libgsasl and
+--   [WARNING]: The output is allocated by the libgsasl and
 --              should be freed by the caller so we use 'unsafePackMallocCString'
 --              to attach a finalizer to free the memory. See `Data.ByteString.Unsafe`
 --              for more information.
 serverStep64 :: GSaslSession -> B.ByteString -> IO (B.ByteString, Progress)
 serverStep64 session input64 = do
   alloca $ \(p :: Ptr CString) -> do
-    B.unsafeUseAsCString input64 $ \cstr -> do
+    B.useAsCString input64 $ \cstr -> do
       c <- gsasl_step64 session cstr p
       case GSaslErrCode c of
         GSASL_OK -> do
@@ -286,15 +288,13 @@ fromBase64 input = unsafePerformIO $
 type StrFFIFunc = CString -> CSize -> Ptr CString -> Ptr CSize -> IO CInt
 
 -- | Helper function for invoking a C-style string-in and string-out function.
---   [WARNING]: The function uses 'unsafeUseAsCString' so the
---              input bytestring should not be freed or modified during the
---              function call. And the output is allocated by the libgsasl and
+--   [WARNING]: The output is allocated by the libgsasl and
 --              should be freed by the caller so we use 'unsafePackMallocCString'
 --              to attach a finalizer to free the memory. See `Data.ByteString.Unsafe`
 --              for more information.
 strFFIHelper :: B.ByteString -> StrFFIFunc -> (B.ByteString -> CInt -> IO a) -> IO a
 strFFIHelper input f action = do
-  B.unsafeUseAsCStringLen input $ \(cstr,len) -> do
+  B.useAsCStringLen input $ \(cstr,len) -> do
     alloca $ \(p :: Ptr CString) -> do
       alloca $ \(s :: Ptr CSize) -> do
         e       <- f cstr (fromIntegral len) p s
@@ -321,7 +321,7 @@ scramSecretsFromPasswordSha256 :: B.ByteString -- password
                                   , B.ByteString -- storedKey
                                   )
 scramSecretsFromPasswordSha256 pw iter salt = unsafePerformIO $
-  B.unsafeUseAsCString pw $ \pPw                   ->
+  B.useAsCString pw $ \pPw                   ->
   B.unsafeUseAsCStringLen salt $ \(pSalt, saltLen) ->
   allocaBytes 32 $ \saltedPasswordBuf ->
   allocaBytes 32 $ \clientKeyBuf      ->
@@ -350,7 +350,7 @@ scramSecretsFromSaltedPasswordSha256 :: B.ByteString -- saltedPassword
                                         , B.ByteString -- storedKey
                                         )
 scramSecretsFromSaltedPasswordSha256 saltedPassword = unsafePerformIO $
-  B.unsafeUseAsCString saltedPassword $ \pSpw ->
+  B.useAsCString saltedPassword $ \pSpw ->
   allocaBytes 32 $ \clientKeyBuf ->
   allocaBytes 32 $ \serverKeyBuf ->
   allocaBytes 32 $ \storedKeyBuf -> do
